@@ -1,5 +1,41 @@
-<html>
-  <body>
-    Test page
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Window Control</title>
+  <script>
+    function openInNewWindow() {
+      window.open(window.location.href, '_blank');
+    }
+
+    function closeCurrentWindow() {
+      window.close();
+    }
+
+    function goback() {
+    window.history.back();
+    }
+
+    function closeBack() {
+      window.close();
+      window.history.back();
+    }
+  </script>
+</head>
+<body>
+  <h1>Window Control Example</h1>
+
+  <!-- Button to open the current page in a new window -->
+  <button onclick="openInNewWindow()">Open in New Window</button>
+
+  <!-- Button to close the current window -->
+  <button onclick="closeCurrentWindow()">Close Current Window</button>
+
+   <!-- Button to close the current window -->
+   <button onclick="goback()">History back</button>
+
+   <button onclick="closeBack()">Close and back</button>
+
+</body>
 </html>
