@@ -2,375 +2,321 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monthly Financial Planner</title>
-    <!-- Include Chart.js from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Custom Styles -->
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            // Cloudflare API endpoint (replace with your actual endpoint)
-            const CLOUDFLARE_API_URL = "https://apis.abuksm.workers.dev/";
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monthly Financial Planner</title>
+  <!-- Include Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom Styles -->
+   <script>
+document.addEventListener("DOMContentLoaded", () => {
+  // Retrieve stored data
+  let income = localStorage.getItem("income") ? parseFloat(localStorage.getItem("income")) : 0;
+  let expenses = localStorage.getItem("expenses") ? JSON.parse(localStorage.getItem("expenses")) : [];
+  let expenseChart; // Chart instance reference
 
-            let income = 0;
-            let expenses = [];
-            let expenseChart;
+  // UI elements
+  const incomeInput = document.getElementById("income-input");
+  const setIncomeBtn = document.getElementById("set-income-btn");
+  const displayIncome = document.getElementById("display-income");
+  const expenseNameInput = document.getElementById("expense-name");
+  const expenseAmountInput = document.getElementById("expense-amount");
+  const addExpenseBtn = document.getElementById("add-expense-btn");
+  const expenseList = document.getElementById("expense-list");
+  const totalExpenseEl = document.getElementById("total-expense");
+  const balanceEl = document.getElementById("balance");
+  const chartCtx = document.getElementById("expense-chart").getContext("2d");
 
-            // UI elements
-            const incomeInput = document.getElementById("income-input");
-            const setIncomeBtn = document.getElementById("set-income-btn");
-            const displayIncome = document.getElementById("display-income");
-            const expenseNameInput = document.getElementById("expense-name");
-            const expenseAmountInput = document.getElementById("expense-amount");
-            const addExpenseBtn = document.getElementById("add-expense-btn");
-            const expenseList = document.getElementById("expense-list");
-            const totalExpenseEl = document.getElementById("total-expense");
-            const balanceEl = document.getElementById("balance");
-            const chartCtx = document.getElementById("expense-chart").getContext("2d");
+  // Save functions
+  function saveIncome() {
+    localStorage.setItem("income", income);
+  }
+  function saveExpenses() {
+    localStorage.setItem("expenses", JSON.stringify(expenses));
+  }
 
-            // Save data to localStorage
-            function saveToLocalStorage() {
-                localStorage.setItem("income", income);
-                localStorage.setItem("expenses", JSON.stringify(expenses));
-            }
+  // Update display functions
+  function updateIncomeDisplay() {
+    displayIncome.textContent = `Monthly Income: ₹${income.toFixed(2)}`;
+  }
 
-            // Save data to Cloudflare API
-            async function saveToCloudflare() {
-                try {
-                    const response = await fetch(CLOUDFLARE_API_URL + 'setdata', {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            key: 'FIN_MAN',
-                            value: { income, expenses }
-                        }),
-                    });
-                    if (!response.ok) {
-                        console.error("Failed to save data to Cloudflare:", response.statusText);
-                    }
-                } catch (error) {
-                    console.error("Error saving data to Cloudflare:", error);
-                }
-            }
+  // Update the expense list with delete buttons and proper alignment
+  function updateExpenseList() {
+    expenseList.innerHTML = "";
+    expenses.forEach((expense, index) => {
+      const li = document.createElement("li");
+      
+      // Create left container for description and percentage
+      const leftDiv = document.createElement("div");
+      leftDiv.classList.add("expense-info");
+      let percentage = income > 0 ? (expense.amount / income) * 100 : 0;
+      leftDiv.textContent = `${expense.name} (${percentage.toFixed(1)}%)`;
 
-            // Save data to both Cloudflare and localStorage
-            async function saveAllData() {
-                await saveToCloudflare();
-                saveToLocalStorage();
-            }
+      // Create right container for the amount
+      const rightDiv = document.createElement("div");
+      rightDiv.classList.add("expense-amount");
+      rightDiv.textContent = `₹${expense.amount.toFixed(2)}`;
+      
+      // Create delete button
+      const deleteBtn = document.createElement("button");
+      deleteBtn.classList.add("delete-expense");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.addEventListener("click", () => {
+        expenses.splice(index, 1);
+        saveExpenses();
+        updateExpenseList();
+        updateSummaryAndChart();
+      });
+      
+      li.appendChild(leftDiv);
+      li.appendChild(rightDiv);
+      li.appendChild(deleteBtn);
+      expenseList.appendChild(li);
+    });
+  }
+  
+  function updateSummaryAndChart() {
+    const totalExpense = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const balance = income - totalExpense;
+    totalExpenseEl.textContent = `Total Expenses: ₹${totalExpense.toFixed(2)}`;
+    let balancePercentage = income > 0 ? (balance / income) * 100 : 0;
+    balanceEl.textContent = `Balance: ₹${balance.toFixed(2)} (${balancePercentage.toFixed(1)}%)`;
+    // Set the free balance color to light gray
+    balanceEl.style.color = "#999";
+    updateChart(balance);
+  }
+  
+  // Chart.js: update or render the donut chart
+  function updateChart(balance) {
+    let labels = [];
+    let data = [];
+    let backgroundColors = [];
 
-            // Load data from localStorage
-            function loadFromLocalStorage() {
-                income = localStorage.getItem("income") ? parseFloat(localStorage.getItem("income")) : 0;
-                expenses = localStorage.getItem("expenses") ? JSON.parse(localStorage.getItem("expenses")) : [];
-            }
-
-            // Load data from Cloudflare API, fallback to localStorage if fails
-            async function loadData() {
-                try {
-                    const response = await fetch(CLOUDFLARE_API_URL + 'getdata', {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            key: 'FIN_MAN'
-                        }),
-                    });
-                    if (response.ok) {
-                        const resp = await response.json();
-                        if (resp.success) {
-                            const data = resp.data;
-                            income = data.income || 0;
-                            expenses = data.expenses || [];
-                            console.log("Loaded data from Cloudflare.");
-                        } else {
-                            loadFromLocalStorage();
-
-                        }
-                    } else {
-                        console.warn("Cloudflare load failed, using localStorage.");
-                        loadFromLocalStorage();
-                    }
-                } catch (error) {
-                    console.error("Error loading from Cloudflare, using localStorage:", error);
-                    loadFromLocalStorage();
-                }
-                updateIncomeDisplay();
-                updateExpenseList();
-                updateSummaryAndChart();
-            }
-
-            // Update display functions
-            function updateIncomeDisplay() {
-                displayIncome.textContent = `Monthly Income: ₹${income.toFixed(2)}`;
-            }
-
-            function updateExpenseList() {
-                expenseList.innerHTML = "";
-                expenses.forEach((expense, index) => {
-                    const li = document.createElement("li");
-
-                    // Left container for description and percentage
-                    const leftDiv = document.createElement("div");
-                    leftDiv.classList.add("expense-info");
-                    let percentage = income > 0 ? (expense.amount / income) * 100 : 0;
-                    leftDiv.textContent = `${expense.name} (${percentage.toFixed(1)}%)`;
-
-                    // Right container for the amount
-                    const rightDiv = document.createElement("div");
-                    rightDiv.classList.add("expense-amount");
-                    rightDiv.textContent = `₹${expense.amount.toFixed(2)}`;
-
-                    // Delete button
-                    const deleteBtn = document.createElement("button");
-                    deleteBtn.classList.add("delete-expense");
-                    deleteBtn.textContent = "Delete";
-                    deleteBtn.addEventListener("click", async () => {
-                        expenses.splice(index, 1);
-                        await saveAllData();
-                        updateExpenseList();
-                        updateSummaryAndChart();
-                    });
-
-                    li.appendChild(leftDiv);
-                    li.appendChild(rightDiv);
-                    li.appendChild(deleteBtn);
-                    expenseList.appendChild(li);
-                });
-            }
-
-            function updateSummaryAndChart() {
-                const totalExpense = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-                const balance = income - totalExpense;
-                totalExpenseEl.textContent = `Total Expenses: ₹${totalExpense.toFixed(2)}`;
-                let balancePercentage = income > 0 ? (balance / income) * 100 : 0;
-                balanceEl.textContent = `Balance: ₹${balance.toFixed(2)} (${balancePercentage.toFixed(1)}%)`;
-                balanceEl.style.color = "#999"; // light gray color for free balance
-                updateChart(balance);
-            }
-
-            function updateChart(balance) {
-                let labels = [];
-                let data = [];
-                let backgroundColors = [];
-
-                expenses.forEach(expense => {
-                    labels.push(expense.name);
-                    data.push(expense.amount);
-                    backgroundColors.push(randomColor());
-                });
-                // Add balance if positive
-                if (balance > 0) {
-                    labels.push("Balance");
-                    data.push(balance);
-                    backgroundColors.push("#4CAF50");
-                }
-
-                if (expenseChart) {
-                    expenseChart.destroy();
-                }
-
-                expenseChart = new Chart(chartCtx, {
-                    type: "doughnut",
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: data,
-                            backgroundColor: backgroundColors,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: { position: "bottom" }
-                        }
-                    }
-                });
-            }
-
-            function randomColor() {
-                let letters = '0123456789ABCDEF';
-                let color = '#';
-                for (let i = 0; i < 6; i++) {
-                    color += letters[Math.floor(Math.random() * 16)];
-                }
-                return color;
-            }
-
-            // Event listeners
-            setIncomeBtn.addEventListener("click", async () => {
-                const newIncome = parseFloat(incomeInput.value);
-                if (!isNaN(newIncome) && newIncome >= 0) {
-                    income = newIncome;
-                    await saveAllData();
-                    updateIncomeDisplay();
-                    updateExpenseList();
-                    updateSummaryAndChart();
-                    incomeInput.value = "";
-                } else {
-                    alert("Please enter a valid income amount.");
-                }
-            });
-
-            addExpenseBtn.addEventListener("click", async () => {
-                const expenseName = expenseNameInput.value.trim();
-                const expenseAmount = parseFloat(expenseAmountInput.value);
-                if (expenseName && !isNaN(expenseAmount) && expenseAmount > 0) {
-                    expenses.push({ name: expenseName, amount: expenseAmount });
-                    await saveAllData();
-                    updateExpenseList();
-                    updateSummaryAndChart();
-                    expenseNameInput.value = "";
-                    expenseAmountInput.value = "";
-                } else {
-                    alert("Please enter valid expense name and amount.");
-                }
-            });
-
-            // On page load, try to load from Cloudflare first, fallback to localStorage
-            loadData();
-        });
-
-    </script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f5f7fa;
-            margin: 0;
-            padding: 20px;
-            color: #333;
+    expenses.forEach(expense => {
+      labels.push(expense.name);
+      data.push(expense.amount);
+      backgroundColors.push(randomColor());
+    });
+    // Add balance if any
+    if (balance > 0) {
+      labels.push("Balance");
+      data.push(balance);
+      backgroundColors.push("#EFEFEF"); // green for balance
+    }
+    
+    // Destroy existing chart instance if it exists
+    if (expenseChart) {
+      expenseChart.destroy();
+    }
+    
+    expenseChart = new Chart(chartCtx, {
+      type: "doughnut",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: backgroundColors,
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: "bottom"
+          }
         }
+      }
+    });
+  }
+  
+  // Utility: Generate random color for expense segments
+  function randomColor() {
+    let letters = '0123456789ABCDEF';
+    let color = '#';
+    for(let i = 0; i < 6; i++){
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-        }
+  // Event listeners
+  setIncomeBtn.addEventListener("click", () => {
+    const newIncome = parseFloat(incomeInput.value);
+    if (!isNaN(newIncome) && newIncome >= 0) {
+      income = newIncome;
+      saveIncome();
+      updateIncomeDisplay();
+      updateExpenseList();
+      updateSummaryAndChart();
+      incomeInput.value = "";
+    } else {
+      alert("Please enter a valid income amount.");
+    }
+  });
 
-        h1,
-        h4 {
-            text-align: center;
-            color: #2c3e50;
-        }
+  addExpenseBtn.addEventListener("click", () => {
+    const expenseName = expenseNameInput.value.trim();
+    const expenseAmount = parseFloat(expenseAmountInput.value);
+    if (expenseName && !isNaN(expenseAmount) && expenseAmount > 0) {
+      expenses.push({ name: expenseName, amount: expenseAmount });
+      saveExpenses();
+      updateExpenseList();
+      updateSummaryAndChart();
+      expenseNameInput.value = "";
+      expenseAmountInput.value = "";
+    } else {
+      alert("Please enter valid expense name and amount.");
+    }
+  });
 
-        section {
-            margin-bottom: 20px;
-        }
+  // Initialize UI on page load
+  updateIncomeDisplay();
+  updateExpenseList();
+  updateSummaryAndChart();
+});
 
-        input[type="number"],
-        input[type="text"] {
-            width: calc(100% - 22px);
-            padding: 10px;
-            margin: 5px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
 
-        button {
-            padding: 10px 15px;
-            background-color: #3498db;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
+   </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f7fa;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
 
-        button:hover {
-            background-color: #2980b9;
-        }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+    }
 
-        ul {
-            list-style: none;
-            padding: 0;
-        }
+    h1,
+    h4 {
+      text-align: center;
+      color: #2c3e50;
+    }
 
-        li {
-            padding: 8px;
-            background-color: #ecf0f1;
-            margin-bottom: 5px;
-            border-radius: 4px;
-        }
+    section {
+      margin-bottom: 20px;
+    }
 
-        canvas {
-            display: block;
-            margin: 0 auto;
-            max-width: 100%;
-        }
+    input[type="number"],
+    input[type="text"] {
+      width: calc(100% - 22px);
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
 
-        ul#expense-list li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background-color: #ecf0f1;
-            margin-bottom: 5px;
-            border-radius: 4px;
-        }
+    button {
+      padding: 10px 15px;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
 
-        .expense-info {
-            text-align: left;
-            flex: 1;
-        }
+    button:hover {
+      background-color: #2980b9;
+    }
 
-        .expense-amount {
-            text-align: right;
-            margin-left: 10px;
-            white-space: nowrap;
-        }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
 
-        .delete-expense {
-            background-color: transparent;
-            border: none;
-            color: red;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-    </style>
+    li {
+      padding: 8px;
+      background-color: #ecf0f1;
+      margin-bottom: 5px;
+      border-radius: 4px;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+    }
+
+    ul#expense-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background-color: #ecf0f1;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
+
+.expense-info {
+  text-align: left;
+  flex: 1;
+}
+
+.expense-amount {
+  text-align: right;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.delete-expense {
+  background-color: transparent;
+  border: none;
+  color: red;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+  </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Monthly Financial Planner</h1>
+  <div class="container">
+    <h1>Monthly Financial Planner</h1>
 
-        <!-- Income Section -->
-        <section id="income-section">
-            <h4>Monthly Income</h4>
-            <input type="number" id="income-input" placeholder="Enter monthly income (₹)" />
-            <button id="set-income-btn">Set Income</button>
-            <p id="display-income"></p>
-        </section>
+    <!-- Income Section -->
+    <section id="income-section">
+      <h4>Monthly Income</h4>
+      <input type="number" id="income-input" placeholder="Enter monthly income (₹)" />
+      <button id="set-income-btn">Set Income</button>
+      <p id="display-income"></p>
+    </section>
 
-        <!-- Expense Entry Section -->
-        <section id="expense-section">
-            <h4>Add Expense</h4>
-            <input type="text" id="expense-name" placeholder="Expense name" />
-            <input type="number" id="expense-amount" placeholder="Amount (₹)" />
-            <button id="add-expense-btn">Add Expense</button>
-        </section>
+    <!-- Expense Entry Section -->
+    <section id="expense-section">
+      <h4>Add Expense</h4>
+      <input type="text" id="expense-name" placeholder="Expense name" />
+      <input type="number" id="expense-amount" placeholder="Amount (₹)" />
+      <button id="add-expense-btn">Add Expense</button>
+    </section>
 
-        <!-- Expense List Section -->
-        <section id="expense-list-section">
-            <h4>Expenses</h4>
-            <ul id="expense-list"></ul>
-        </section>
+    <!-- Expense List Section -->
+    <section id="expense-list-section">
+      <h4>Expenses</h4>
+      <ul id="expense-list"></ul>
+    </section>
 
-        <!-- Summary Section -->
-        <section id="summary-section">
-            <h4>Summary</h4>
-            <p id="total-expense"></p>
-            <p id="balance"></p>
-        </section>
+    <!-- Summary Section -->
+    <section id="summary-section">
+      <h4>Summary</h4>
+      <p id="total-expense"></p>
+      <p id="balance"></p>
+    </section>
 
-        <!-- Chart Section -->
-        <section id="chart-section">
-            <h4>Spending Distribution</h4>
-            <canvas id="expense-chart"></canvas>
-        </section>
-    </div>
+    <!-- Chart Section -->
+    <section id="chart-section">
+      <h4>Spending Distribution</h4>
+      <canvas id="expense-chart"></canvas>
+    </section>
+  </div>
 </body>
 
 </html>
