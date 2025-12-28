@@ -61,7 +61,6 @@
 
   // Orbit controls (mouse move)
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 1.2, 0); // look at chest/head area
 controls.update();
 
 
@@ -85,9 +84,31 @@ scene.add(backLight);
 
   // Load GLB
   const loader = new THREE.GLTFLoader();
-  loader.load("human.glb", function (gltf) {
-    scene.add(gltf.scene);
-  });
+loader.load("human.glb", function (gltf) {
+  const model = gltf.scene;
+  scene.add(model);
+
+  // ===== Auto-center & auto-scale =====
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+
+  // Center model at origin
+  model.position.sub(center);
+
+  // Scale to human height (~1.7 units)
+  const targetHeight = 2.2;
+  const scale = targetHeight / size.y;
+  model.scale.setScalar(scale);
+
+  // Adjust camera to look at model
+  camera.position.set(0, 1.2, 1.2);
+
+  // Make orbit controls focus the model
+controls.target.copy(center);
+controls.update();
+});
+
 
   // Resize handling
   window.addEventListener("resize", () => {
