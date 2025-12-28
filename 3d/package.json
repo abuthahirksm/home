@@ -1,0 +1,12 @@
+{
+  "name": "threejs-3d-server",
+  "version": "1.0.0",
+  "description": "Simple static server for 3d folder using Express",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

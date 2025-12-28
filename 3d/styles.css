@@ -1,0 +1,19 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#three-container {
+    width: 100%;
+    height: 600px;
+    display: block;
+    background: #e0f7fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 2em;
+}
+
+h1 {
+    font-size: 2.5em;
+    color: #00796b;
+}
