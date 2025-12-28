@@ -69,17 +69,17 @@ controls.update();
 // ===== Studio Lighting =====
 
 // Key light (main)
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
 keyLight.position.set(2, 3, 4);
 scene.add(keyLight);
 
 // Fill light (soften shadows)
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
+const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
 fillLight.position.set(-2, 2, 3);
 scene.add(fillLight);
 
 // Back light (rim light)
-const backLight = new THREE.DirectionalLight(0xffffff, 0.8);
+const backLight = new THREE.DirectionalLight(0xffffff, 1.6);
 backLight.position.set(0, 3, -3);
 scene.add(backLight);
 
