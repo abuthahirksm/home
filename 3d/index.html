@@ -84,7 +84,7 @@
         /* ========= GLTF Loader ========= */
         const loader = new THREE.GLTFLoader();
         let model;
-        loader.load("model3.glb", (gltf) => {
+        loader.load("model3_1.glb", (gltf) => {
             model = gltf.scene;
             scene.add(model);
 
@@ -100,10 +100,6 @@
                 if (obj.isMesh) {
                     console.log("Mesh:", obj.name, "Material:", obj.material?.name);
                 }
-
-
-
-
             });
 
 
