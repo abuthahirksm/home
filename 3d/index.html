@@ -1,147 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>GLB Test</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>GLB Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body {
-      margin: 0;
-      background: #111;
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    <style>
+        body {
+            margin: 0;
+            background: #111;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    #canvas-container {
-      width: 50vw;
-      height: 50vh;
-      border: 2px solid #555;
-    }
+        #canvas-container {
+            width: 50vw;
+            height: 50vh;
+            border: 2px solid #555;
+        }
 
-    canvas {
-      display: block;
-    }
-  </style>
+        canvas {
+            display: block;
+        }
+    </style>
 </head>
+
 <body>
 
-<div id="canvas-container"></div>
+    <div id="canvas-container"></div>
 
-<!-- Three.js core -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <!-- Three.js core -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
-<!-- GLTF Loader -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- GLTF Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 
+    <script>
+        const container = document.getElementById("canvas-container");
 
-<script>
-  const container = document.getElementById("canvas-container");
-
-  // Scene
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1d22);
-
-
-  // Camera
-  const camera = new THREE.PerspectiveCamera(
-    45,
-    container.clientWidth / container.clientHeight,
-    0.1,
-    100
-  );
-  camera.position.set(0, 1.2, 1.2);
-
-  // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(container.clientWidth, container.clientHeight);
-  container.appendChild(renderer.domElement);
-
-  // Orbit controls (mouse move)
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.update();
+        /* ========= Scene ========= */
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1d22);
+        const clock = new THREE.Clock();
 
 
-  // Light
-// ===== Studio Lighting =====
+        /* ========= Camera ========= */
+        const camera = new THREE.PerspectiveCamera(
+            45,
+            container.clientWidth / container.clientHeight,
+            0.01,
+            1000
+        );
 
-// Key light (main)
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
-keyLight.position.set(2, 3, 4);
-scene.add(keyLight);
+        /* ========= Renderer ========= */
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            logarithmicDepthBuffer: true
+        });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
 
-// Fill light (soften shadows)
-const fillLight = new THREE.DirectionalLight(0xffffff, 1.2);
-fillLight.position.set(-2, 2, 3);
-scene.add(fillLight);
+        /* ========= Controls ========= */
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
 
-// Back light (rim light)
-const backLight = new THREE.DirectionalLight(0xffffff, 1.6);
-backLight.position.set(0, 3, -3);
-scene.add(backLight);
+        /* ========= Lighting (model-friendly) ========= */
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
 
+        const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        keyLight.position.set(5, 10, 7);
+        scene.add(keyLight);
 
-// ===== Floor =====
-const floorGeometry = new THREE.PlaneGeometry(10, 10);
-const floorMaterial = new THREE.MeshStandardMaterial({
-  color: 0x222222,
-  roughness: 0.8,
-  metalness: 0.1
-});
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        const rimLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        rimLight.position.set(-5, 5, -5);
+        scene.add(rimLight);
 
-floor.rotation.x = -Math.PI / 2; // horizontal
-floor.position.y = -0.85;       // slightly below feet
-scene.add(floor);
+        /* ========= GLTF Loader ========= */
+        const loader = new THREE.GLTFLoader();
+        let model;
+        loader.load("model3.glb", (gltf) => {
+            model = gltf.scene;
+            scene.add(model);
 
+            /* ===== Compute bounds ===== */
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
 
-  // Load GLB
-  const loader = new THREE.GLTFLoader();
-loader.load("human.glb", function (gltf) {
-  const model = gltf.scene;
-  scene.add(model);
+            /* ===== Center model at origin ===== */
+            model.position.sub(center);
 
-  // ===== Auto-center & auto-scale =====
-  const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-
-  // Center model at origin
-  model.position.sub(center);
-
-  // Scale to human height (~1.7 units)
-  const targetHeight = 2.2;
-  const scale = targetHeight / size.y;
-  model.scale.setScalar(scale);
-
-  // Adjust camera to look at model
-  camera.position.set(0, 1.2, 1.2);
-
-  // Make orbit controls focus the model
-controls.target.copy(center);
-controls.update();
-});
+            model.traverse((obj) => {
+                if (obj.isMesh) {
+                    console.log("Mesh:", obj.name, "Material:", obj.material?.name);
+                }
 
 
-  // Resize handling
-  window.addEventListener("resize", () => {
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-  });
 
-  // Render loop
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
-  animate();
-</script>
+
+            });
+
+
+            model.traverse(o => {
+                if (o.isSkinnedMesh && o.morphTargetDictionary) {
+                    console.log('morphTargetDictionary', o.name, Object.keys(o.morphTargetDictionary));
+                }
+            });
+
+            gltf.animations.forEach((clip, i) => {
+                console.log(i, clip.name, "duration:", clip.duration);
+            });
+
+
+            /* ===== Get bounding sphere ===== */
+            const sphere = box.getBoundingSphere(new THREE.Sphere());
+            const radius = sphere.radius;
+
+            /* ===== Camera distance based on FOV ===== */
+            const fov = THREE.MathUtils.degToRad(camera.fov);
+            const distance = radius / Math.sin(fov / 2);
+
+            camera.position.set(0, radius * 0.6, distance * 1.1);
+
+            /* ===== Adjust clipping planes ===== */
+            camera.near = distance / 100;
+            camera.far = distance * 100;
+            camera.updateProjectionMatrix();
+
+            /* ===== Controls focus ===== */
+            controls.target.set(0, radius * 0.4, 0);
+            controls.update();
+
+            console.log("Model auto-fitted ✔");
+        });
+
+        /* ========= Resize ========= */
+        window.addEventListener("resize", () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+
+        /* ========= Render Loop ========= */
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+
 
 </body>
+
 </html>
