@@ -136,6 +136,20 @@
             console.log("Model auto-fitted ✔");
         });
 
+let room;
+        // ===== Load Room GLTF =====
+loader.load("room2.glb", (gltf) => {
+     room = gltf.scene;
+    scene.add(room);
+
+    // Optional: scale or position the room
+    room.scale.set(0.01, 0.01, 0.01); // adjust if needed
+    room.position.set(0,1.45, 0); // adjust if needed
+  
+
+    console.log("Room added to scene ✔");
+});
+
         /* ========= Resize ========= */
         window.addEventListener("resize", () => {
             camera.aspect = container.clientWidth / container.clientHeight;
