@@ -85,7 +85,9 @@
         const loader = new THREE.GLTFLoader();
         let model;
         let mixer;
-let activeAction;
+        let activeAction;
+
+        let activeClipName = null;
 
         loader.load("model8.glb", (gltf) => {
             model = gltf.scene;
@@ -137,12 +139,12 @@ let activeAction;
             controls.target.set(0, radius * 0.4, 0);
             controls.update();
 
-             // ===== Animation Mixer for character =====
+            // ===== Animation Mixer for character =====
             mixer = new THREE.AnimationMixer(model);
 
             // ===== Animation Mixer for character =====
-// ▶ START WALK ANIMATION
-playAnim();
+            // ▶ START WALK ANIMATION
+            playAnim('idle');
 
             console.log("Model auto-fitted ✔");
         });
@@ -170,43 +172,69 @@ playAnim();
 
 
         /* ========= Render Loop ========= */
-function animate() {
-    requestAnimationFrame(animate);
+        function animate() {
+            requestAnimationFrame(animate);
 
-    const delta = clock.getDelta();
+            const delta = clock.getDelta();
 
-    if (mixer) mixer.update(delta); // 🔥 REQUIRED
+            if (mixer) mixer.update(delta); // 🔥 REQUIRED
 
-    controls.update();
-    renderer.render(scene, camera);
-}
+            controls.update();
+            renderer.render(scene, camera);
+        }
 
 
         animate();
 
-       function playAnim() {
-    if (!mixer) {
-        console.warn("Mixer not ready yet");
-        return;
-    }
+        function playAnim(name = "") {
+            if (!mixer) return;
 
-    loader.load("walk.glb", (animGltf) => {
-        if (!animGltf.animations.length) {
-            console.error("No animations found in walk.glb");
-            return;
+            // 🛑 Stop animation if name is empty
+            if (!name) {
+                if (activeAction) {
+                    activeAction.fadeOut(0.25);
+                    activeAction.stop();
+                    activeAction = null;
+                    activeClipName = null;
+                    console.log("Animation stopped");
+                }
+                return;
+            }
+
+            // 🔁 Prevent reloading same animation
+            if (name === activeClipName) {
+                console.log("Animation already playing:", name);
+                return;
+            }
+
+            const file = `${name}.glb`;
+
+            loader.load(file, (animGltf) => {
+                if (!animGltf.animations.length) {
+                    console.error("No animations in", file);
+                    return;
+                }
+
+                const clip = animGltf.animations[0];
+
+                const newAction = mixer.clipAction(clip);
+                newAction.reset();
+                newAction.setLoop(THREE.LoopRepeat);
+                newAction.fadeIn(0.25);
+                newAction.play();
+
+                // 🔄 Gracefully fade out old animation
+                if (activeAction) {
+                    activeAction.fadeOut(0.25);
+                }
+
+                activeAction = newAction;
+                activeClipName = name;
+
+                console.log(`Playing animation: ${name}`);
+            });
         }
 
-        const clip = animGltf.animations[0];
-        console.log("Loaded clip:", clip.name);
-
-        activeAction = mixer.clipAction(clip);
-        activeAction.reset();
-        activeAction.setLoop(THREE.LoopRepeat);
-        activeAction.play();
-
-        console.log("Walk animation playing ✔");
-    });
-}
 
     </script>
 
