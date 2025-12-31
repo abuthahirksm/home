@@ -17,8 +17,8 @@
         }
 
         #canvas-container {
-            width: 50vw;
-            height: 50vh;
+            width: 400px;
+            height: 600px;
             border: 2px solid #555;
         }
 
@@ -58,8 +58,7 @@
 
         /* ========= Renderer ========= */
         const renderer = new THREE.WebGLRenderer({
-            antialias: true,
-            logarithmicDepthBuffer: true
+            antialias: true
         });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -85,11 +84,12 @@
         const loader = new THREE.GLTFLoader();
         let model;
         let mixer;
-        let activeAction;
+        let outfit; // static outfit holder
 
+        let activeAction;
         let activeClipName = null;
 
-        loader.load("model8.glb", (gltf) => {
+        loader.load("model3_1.glb", (gltf) => {
             model = gltf.scene;
             scene.add(model);
 
@@ -105,6 +105,12 @@
             model.traverse((obj) => {
                 if (obj.isMesh) {
                     console.log("Mesh:", obj.name, "Material:", obj.material?.name);
+                }
+            });
+
+            model.traverse((obj) => {
+                if (obj.isSkinnedMesh) {
+                    obj.frustumCulled = false;
                 }
             });
 
@@ -131,9 +137,10 @@
             camera.position.set(0, radius * 0.6, distance * 1.1);
 
             /* ===== Adjust clipping planes ===== */
-            camera.near = 0.01;
-            camera.far = 1000;
+            camera.near = distance / 100;
+            camera.far = distance * 100;
             camera.updateProjectionMatrix();
+
 
             /* ===== Controls focus ===== */
             controls.target.set(0, radius * 0.4, 0);
@@ -144,9 +151,12 @@
 
             // ===== Animation Mixer for character =====
             // ▶ START WALK ANIMATION
-            playAnim('idle');
+            //    playAnim('idle');
 
             console.log("Model auto-fitted ✔");
+
+            
+
         });
 
         /*let room;
